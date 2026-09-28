@@ -1,0 +1,32 @@
+# compiled output
+/dist
+/build
+/node_modules
+
+# logs
+logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# tests
+/coverage
+/.nyc_output
+
+# IDE
+.idea
+.vscode/*
+!.vscode/extensions.json
+
+# env
+.env
+.env.*.local
+
+# prisma
+/generated/prisma
+
+/explanation
+CLAUDE.MD
