@@ -29,11 +29,12 @@ See [CLAUDE.md](./CLAUDE.md) for the full task breakdown, conventions, and worki
    ```bash
    cp .env.example .env
    ```
-3. Point `DATABASE_URL` in `.env` at a running PostgreSQL instance (local install or hosted).
-4. Generate the Prisma client and apply migrations (once schema exists — see Part 2):
+3. Point `DATABASE_URL` in `.env` at a running PostgreSQL instance (local install or hosted, e.g. [Neon](https://neon.tech)/[Supabase](https://supabase.com)).
+4. Generate the Prisma client, apply migrations, and seed default data (roles, disabled AI provider stubs):
    ```bash
-   npx prisma generate
-   npx prisma migrate dev
+   npm run prisma:generate
+   npm run prisma:migrate
+   npm run prisma:seed
    ```
 5. Run the app:
    ```bash
@@ -66,6 +67,11 @@ Later parts add JWT and provider-key-encryption secrets — see `.env.example` f
 | `npm run lint`        | Lint and auto-fix                   |
 | `npm run test`        | Unit tests                          |
 | `npm run test:e2e`    | End-to-end tests                    |
+| `npm run prisma:generate` | Regenerate the Prisma client    |
+| `npm run prisma:migrate`  | Create/apply a dev migration    |
+| `npm run prisma:deploy`   | Apply migrations (production)   |
+| `npm run prisma:seed`     | Seed default roles + AI provider stubs |
+| `npm run prisma:studio`   | Open Prisma Studio (DB browser) |
 
 ## Project Status
 

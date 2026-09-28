@@ -1,8 +1,5 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// EchoGPT backend — Prisma schema
+// See explanation/part-2-database.md for design rationale.
 
 generator client {
   provider = "prisma-client-js"
@@ -10,4 +7,222 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Auth / Users
+// ---------------------------------------------------------------------------
+
+enum RoleName {
+  USER
+  ADMIN
+}
+
+model Role {
+  id    String   @id @default(cuid())
+  name  RoleName @unique
+  users User[]
+
+  @@map("roles")
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+model User {
+  id                         String     @id @default(cuid())
+  email                      String     @unique
+  passwordHash               String     @map("password_hash")
+  fullName                   String     @map("full_name")
+  roleId                     String     @map("role_id")
+  role                       Role       @relation(fields: [roleId], references: [id])
+  status                     UserStatus @default(ACTIVE)
+  isEmailVerified            Boolean    @default(false) @map("is_email_verified")
+  emailVerificationToken     String?    @map("email_verification_token")
+  emailVerificationExpiresAt DateTime?  @map("email_verification_expires_at")
+  deletedAt                  DateTime?  @map("deleted_at")
+  createdAt                  DateTime   @default(now()) @map("created_at")
+  updatedAt                  DateTime   @updatedAt @map("updated_at")
+
+  sessions     Session[]
+  subscription Subscription?
+  chats        Chat[]
+  webSearches  WebSearch[]
+  apiUsageLogs ApiUsageLog[]
+
+  @@index([roleId])
+  @@map("users")
+}
+
+model Session {
+  id               String    @id @default(cuid())
+  userId           String    @map("user_id")
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshTokenHash String    @unique @map("refresh_token_hash")
+  userAgent        String?   @map("user_agent")
+  ipAddress        String?   @map("ip_address")
+  expiresAt        DateTime  @map("expires_at")
+  revokedAt        DateTime? @map("revoked_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+// ---------------------------------------------------------------------------
+// Subscriptions
+// ---------------------------------------------------------------------------
+
+enum PlanTier {
+  FREE
+  PREMIUM
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELED
+  EXPIRED
+  PAST_DUE
+}
+
+model Subscription {
+  id           String             @id @default(cuid())
+  userId       String             @unique @map("user_id")
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tier         PlanTier           @default(FREE)
+  status       SubscriptionStatus @default(ACTIVE)
+  requestLimit Int                @map("request_limit")
+  requestsUsed Int                @default(0) @map("requests_used")
+  periodStart  DateTime           @default(now()) @map("period_start")
+  periodEnd    DateTime           @map("period_end")
+  createdAt    DateTime           @default(now()) @map("created_at")
+  updatedAt    DateTime           @updatedAt @map("updated_at")
+
+  @@map("subscriptions")
+}
+
+// ---------------------------------------------------------------------------
+// AI Providers (platform-managed — admin-configured, server-side keys)
+// ---------------------------------------------------------------------------
+
+enum ProviderType {
+  OPENAI
+  CLAUDE
+  GEMINI
+}
+
+enum HealthStatus {
+  UNKNOWN
+  HEALTHY
+  UNHEALTHY
+}
+
+model AiProvider {
+  id                    String       @id @default(cuid())
+  name                  String
+  type                  ProviderType
+  apiKeyEncrypted       String?      @map("api_key_encrypted")
+  baseUrl               String?      @map("base_url")
+  defaultModel          String?      @map("default_model")
+  isEnabled             Boolean      @default(true) @map("is_enabled")
+  isDefault             Boolean      @default(false) @map("is_default")
+  lastHealthCheckAt     DateTime?    @map("last_health_check_at")
+  lastHealthCheckStatus HealthStatus @default(UNKNOWN) @map("last_health_check_status")
+  createdAt             DateTime     @default(now()) @map("created_at")
+  updatedAt             DateTime     @updatedAt @map("updated_at")
+
+  chatMessages ChatMessage[]
+  apiUsageLogs ApiUsageLog[]
+
+  @@index([type])
+  @@map("ai_providers")
+}
+
+// ---------------------------------------------------------------------------
+// Chat
+// ---------------------------------------------------------------------------
+
+enum MessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+model Chat {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  messages ChatMessage[]
+
+  @@index([userId])
+  @@map("chats")
+}
+
+model ChatMessage {
+  id         String      @id @default(cuid())
+  chatId     String      @map("chat_id")
+  chat       Chat        @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  role       MessageRole
+  content    String      @db.Text
+  providerId String?     @map("provider_id")
+  provider   AiProvider? @relation(fields: [providerId], references: [id])
+  tokenCount Int?        @map("token_count")
+  createdAt  DateTime    @default(now()) @map("created_at")
+
+  @@index([chatId, createdAt])
+  @@map("chat_messages")
+}
+
+// ---------------------------------------------------------------------------
+// Web Search
+// ---------------------------------------------------------------------------
+
+model WebSearch {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  query       String
+  resultsJson Json?     @map("results_json")
+  expiresAt   DateTime? @map("expires_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@index([userId, createdAt])
+  @@map("web_searches")
+}
+
+// ---------------------------------------------------------------------------
+// API Usage Logs
+// ---------------------------------------------------------------------------
+
+enum UsageCategory {
+  AUTH
+  CHAT
+  SEARCH
+  PROVIDER
+  ADMIN
+  OTHER
+}
+
+model ApiUsageLog {
+  id         String        @id @default(cuid())
+  userId     String?       @map("user_id")
+  user       User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  providerId String?       @map("provider_id")
+  provider   AiProvider?   @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  category   UsageCategory
+  endpoint   String
+  statusCode Int           @map("status_code")
+  durationMs Int?          @map("duration_ms")
+  tokensUsed Int?          @map("tokens_used")
+  createdAt  DateTime      @default(now()) @map("created_at")
+
+  @@index([userId, createdAt])
+  @@index([category, createdAt])
+  @@map("api_usage_logs")
 }
