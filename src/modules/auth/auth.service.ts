@@ -80,7 +80,7 @@ export class AuthService {
     );
 
     const tokens = await this.createSessionAndIssueTokens(user, meta);
-    return { ...tokens, user: this.toSafeUser(user) };
+    return { ...tokens, user: this.usersService.toSafeUser(user) };
   }
 
   async login(
@@ -95,7 +95,7 @@ export class AuthService {
     this.assertAccountActive(user);
 
     const tokens = await this.createSessionAndIssueTokens(user, meta);
-    return { ...tokens, user: this.toSafeUser(user) };
+    return { ...tokens, user: this.usersService.toSafeUser(user) };
   }
 
   async refresh(
@@ -131,7 +131,7 @@ export class AuthService {
     });
 
     const tokens = await this.createSessionAndIssueTokens(user, meta);
-    return { ...tokens, user: this.toSafeUser(user) };
+    return { ...tokens, user: this.usersService.toSafeUser(user) };
   }
 
   async logout(sessionId: string): Promise<void> {
@@ -158,7 +158,7 @@ export class AuthService {
     if (!user) {
       throw new UnauthorizedException('Account is no longer active');
     }
-    return this.toSafeUser(user);
+    return this.usersService.toSafeUser(user);
   }
 
   private assertAccountActive(user: User): void {
@@ -210,16 +210,5 @@ export class AuthService {
 
   private hashToken(token: string): string {
     return createHash('sha256').update(token).digest('hex');
-  }
-
-  private toSafeUser(user: UserWithRole): UserResponseDto {
-    return {
-      id: user.id,
-      email: user.email,
-      fullName: user.fullName,
-      role: user.role.name,
-      isEmailVerified: user.isEmailVerified,
-      createdAt: user.createdAt,
-    };
   }
 }
