@@ -9,6 +9,7 @@ import { envValidationSchema } from './config/env.validation';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { AuthModule } from './modules/auth/auth.module';
+import { ProvidersModule } from './modules/providers/providers.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 import { UsersModule } from './modules/users/users.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -26,6 +27,7 @@ import { PrismaModule } from './prisma/prisma.module';
     UsersModule,
     SubscriptionsModule,
     AuthModule,
+    ProvidersModule,
   ],
   controllers: [AppController],
   providers: [

@@ -13,7 +13,15 @@ export interface JwtConfig {
   refreshExpiresIn: string;
 }
 
-export default (): { app: AppConfig; jwt: JwtConfig } => ({
+export interface EncryptionConfig {
+  providerKeySecret: string;
+}
+
+export default (): {
+  app: AppConfig;
+  jwt: JwtConfig;
+  encryption: EncryptionConfig;
+} => ({
   app: {
     env: process.env.NODE_ENV ?? 'development',
     port: parseInt(process.env.PORT ?? '3000', 10),
@@ -26,5 +34,8 @@ export default (): { app: AppConfig; jwt: JwtConfig } => ({
     accessExpiresIn: process.env.JWT_ACCESS_EXPIRES_IN ?? '15m',
     refreshSecret: process.env.JWT_REFRESH_SECRET ?? '',
     refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN ?? '7d',
+  },
+  encryption: {
+    providerKeySecret: process.env.PROVIDER_KEY_ENCRYPTION_SECRET ?? '',
   },
 });
