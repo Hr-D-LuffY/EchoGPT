@@ -141,6 +141,8 @@ For production, set `NODE_ENV=production`, use strong unique secrets, and restri
 
 Swagger UI at **`/api/docs`** is the full reference. It has request and response examples and documents every error status. To try protected routes there, click **Authorize** and paste the `accessToken` from register or login.
 
+Hosted docs (no server needed): **https://hr-d-luffy.github.io/EchoGPT/**
+
 A static copy of the spec is committed at [`docs/openapi.json`](./docs/openapi.json). To browse it without running the server, paste it into [editor.swagger.io](https://editor.swagger.io) or import it into Postman. To regenerate it, run the server and save `http://localhost:3000/api/docs-json`.
 
 ### Response format
