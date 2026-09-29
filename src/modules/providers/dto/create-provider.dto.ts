@@ -1,7 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ProviderType } from '@prisma/client';
 import {
-  IsBoolean,
   IsEnum,
   IsOptional,
   IsString,
@@ -10,6 +9,7 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
+import { IsStrictBoolean } from '../../../common/decorators/is-strict-boolean.decorator';
 
 export const PROVIDER_BASE_URL_OPTIONS = {
   protocols: ['https'],
@@ -61,6 +61,6 @@ export class CreateProviderDto {
     description: 'Requires apiKey when true',
   })
   @IsOptional()
-  @IsBoolean()
+  @IsStrictBoolean()
   isEnabled?: boolean;
 }

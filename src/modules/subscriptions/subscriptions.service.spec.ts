@@ -4,6 +4,7 @@ import {
   HttpException,
   HttpStatus,
   NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { PlanTier, Subscription, SubscriptionStatus } from '@prisma/client';
 import { PLAN_DEFINITIONS } from '../../common/constants/plan.constants';
@@ -171,6 +172,54 @@ describe('SubscriptionsService', () => {
       await expect(service.consumeRequest(USER_ID)).rejects.toBeInstanceOf(
         ForbiddenException,
       );
+    });
+  });
+
+  describe('applyAdminOverride', () => {
+    beforeEach(() => {
+      subscription.findUnique.mockResolvedValue(buildSubscription());
+      subscription.update.mockImplementation(({ data }) =>
+        Promise.resolve(buildSubscription(data)),
+      );
+    });
+
+    it('rejects an empty override with 400', async () => {
+      await expect(
+        service.applyAdminOverride(USER_ID, {}, 'admin-1'),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(subscription.update).not.toHaveBeenCalled();
+    });
+
+    it('sets the plan limit with the tier, and can reset usage', async () => {
+      await service.applyAdminOverride(
+        USER_ID,
+        { tier: PlanTier.PREMIUM, resetUsage: true },
+        'admin-1',
+      );
+
+      expect(subscription.update.mock.calls[0][0].data).toEqual({
+        tier: PlanTier.PREMIUM,
+        requestLimit: PLAN_DEFINITIONS[PlanTier.PREMIUM].requestLimit,
+        requestsUsed: 0,
+      });
+    });
+
+    it('allows setting the tier the user already has (fixes a drifted limit)', async () => {
+      await expect(
+        service.applyAdminOverride(USER_ID, { tier: PlanTier.FREE }, 'admin-1'),
+      ).resolves.toBeDefined();
+    });
+
+    it('can change status alone', async () => {
+      await service.applyAdminOverride(
+        USER_ID,
+        { status: SubscriptionStatus.PAST_DUE },
+        'admin-1',
+      );
+
+      expect(subscription.update.mock.calls[0][0].data).toEqual({
+        status: SubscriptionStatus.PAST_DUE,
+      });
     });
   });
 });

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   HttpException,
@@ -24,6 +25,12 @@ import { SubscriptionResponseDto } from './dto/subscription-response.dto';
 import { UsageResponseDto } from './dto/usage-response.dto';
 
 type Executor = Prisma.TransactionClient | PrismaService;
+
+export interface AdminSubscriptionOverride {
+  tier?: PlanTier;
+  status?: SubscriptionStatus;
+  resetUsage?: boolean;
+}
 
 @Injectable()
 export class SubscriptionsService {
@@ -63,6 +70,48 @@ export class SubscriptionsService {
 
   downgrade(userId: string): Promise<Subscription> {
     return this.changeTier(userId, PlanTier.FREE);
+  }
+
+  /**
+   * Admin override: set tier (and its limit), status, and/or zero the
+   * current period's usage in one write. Unlike upgrade/downgrade, setting
+   * the tier a user already has is allowed — the admin may just be fixing
+   * a drifted limit.
+   */
+  async applyAdminOverride(
+    userId: string,
+    override: AdminSubscriptionOverride,
+    actorId: string,
+  ): Promise<Subscription> {
+    const { tier, status, resetUsage } = override;
+    if (tier === undefined && status === undefined && !resetUsage) {
+      throw new BadRequestException(
+        'Provide at least one of tier, status, or resetUsage',
+      );
+    }
+
+    const current = await this.getCurrent(userId);
+    const data: Prisma.SubscriptionUpdateInput = {};
+    if (tier !== undefined) {
+      data.tier = tier;
+      data.requestLimit = PLAN_DEFINITIONS[tier].requestLimit;
+    }
+    if (status !== undefined) {
+      data.status = status;
+    }
+    if (resetUsage) {
+      data.requestsUsed = 0;
+    }
+
+    const updated = await this.prisma.subscription.update({
+      where: { id: current.id },
+      data,
+    });
+
+    this.logger.log(
+      `Subscription overridden: user=${userId} tier=${current.tier}->${updated.tier} status=${current.status}->${updated.status} resetUsage=${!!resetUsage} by=${actorId}`,
+    );
+    return updated;
   }
 
   /**
