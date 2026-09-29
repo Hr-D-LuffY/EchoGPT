@@ -19,6 +19,7 @@ import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { UsersService } from '../users/users.service';
 import { AuthTokensResponseDto } from './dto/auth-tokens-response.dto';
 import { LoginDto } from './dto/login.dto';
+import { MessageResponseDto } from './dto/message-response.dto';
 import { RegisterDto } from './dto/register.dto';
 import { UserResponseDto } from './dto/user-response.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
@@ -141,7 +142,7 @@ export class AuthService {
     });
   }
 
-  async verifyEmail(dto: VerifyEmailDto): Promise<{ message: string }> {
+  async verifyEmail(dto: VerifyEmailDto): Promise<MessageResponseDto> {
     const user = await this.usersService.findByValidEmailVerificationToken(
       dto.token,
     );

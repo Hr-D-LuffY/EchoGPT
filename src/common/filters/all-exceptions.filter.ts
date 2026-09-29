@@ -10,6 +10,8 @@ import { Request, Response } from 'express';
 import { SSE_CONTENT_TYPE, SSE_EVENT_ERROR } from '../constants/sse.constants';
 import { formatSseEvent } from '../sse/sse-writer';
 
+const VALIDATION_FAILED_MESSAGE = 'Validation failed';
+
 interface ErrorBody {
   success: false;
   statusCode: number;
@@ -81,16 +83,14 @@ export class AllExceptionsFilter implements ExceptionFilter {
         return { statusCode: status, message: response, errors: null };
       }
 
-      const responseObject = response as {
-        message?: string | string[];
-        error?: string;
-      };
+      const responseObject = response as { message?: string | string[] };
       const rawMessage = responseObject.message ?? exception.message;
 
+      // Only ValidationPipe produces a message array (one entry per failed rule).
       if (Array.isArray(rawMessage)) {
         return {
           statusCode: status,
-          message: responseObject.error ?? 'Validation failed',
+          message: VALIDATION_FAILED_MESSAGE,
           errors: rawMessage,
         };
       }

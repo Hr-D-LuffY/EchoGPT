@@ -5,6 +5,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import configuration from './config/configuration';
 import { envValidationSchema } from './config/env.validation';
+import { THROTTLE_DEFAULT } from './common/constants/throttle.constants';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { AdminModule } from './modules/admin/admin.module';
@@ -24,7 +25,7 @@ import { PrismaModule } from './prisma/prisma.module';
       validationSchema: envValidationSchema,
       validationOptions: { abortEarly: false },
     }),
-    ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 100 }]),
+    ThrottlerModule.forRoot([{ name: 'default', ...THROTTLE_DEFAULT }]),
     PrismaModule,
     UsersModule,
     SubscriptionsModule,

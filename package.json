@@ -1,10 +1,13 @@
 {
   "name": "appifydevs",
   "version": "0.0.1",
-  "description": "",
+  "description": "Backend REST API for the EchoGPT multi-AI chat Chrome extension",
   "author": "",
   "private": true,
   "license": "UNLICENSED",
+  "engines": {
+    "node": ">=20.19.0"
+  },
   "scripts": {
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
@@ -85,12 +88,25 @@
     "rootDir": "src",
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
-      "^.+\\.(t|j)s$": "ts-jest"
+      "^.+\\.(t|j)s$": [
+        "ts-jest",
+        {
+          "tsconfig": "<rootDir>/../tsconfig.jest.json"
+        }
+      ]
     },
     "collectCoverageFrom": [
       "**/*.(t|j)s"
     ],
     "coverageDirectory": "../coverage",
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "transformIgnorePatterns": [
+      "/node_modules/(?!@nestjs/(passport|jwt)/)"
+    ],
+    "coveragePathIgnorePatterns": [
+      "\\.module\\.ts$",
+      "\\.dto\\.ts$",
+      "main\\.ts$"
+    ]
   }
 }

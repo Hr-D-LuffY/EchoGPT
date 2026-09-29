@@ -142,6 +142,14 @@ export class UsersService {
     ]);
   }
 
+  async getProfile(userId: string): Promise<UserResponseDto> {
+    const user = await this.findById(userId);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    return this.toSafeUser(user);
+  }
+
   async findByIdForAdmin(id: string): Promise<UserWithRole> {
     const user = await this.findById(id);
     if (!user) {

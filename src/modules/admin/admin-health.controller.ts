@@ -19,6 +19,10 @@ export class AdminHealthController {
       'Always 200 — the verdict is in `status` (ok / degraded / down). `check=true` pings every enabled provider live.',
   })
   @ApiResponse({ status: HttpStatus.OK, type: SystemHealthResponseDto })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Unknown query parameter',
+  })
   getHealth(
     @Query() query: SystemHealthQueryDto,
   ): Promise<SystemHealthResponseDto> {

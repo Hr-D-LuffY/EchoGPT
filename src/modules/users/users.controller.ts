@@ -5,7 +5,6 @@ import {
   Get,
   HttpCode,
   HttpStatus,
-  NotFoundException,
   Param,
   Patch,
 } from '@nestjs/common';
@@ -33,21 +32,22 @@ export class UsersController {
 
   @Get('profile')
   @ApiOperation({ summary: "Get the current user's profile" })
-  @ApiResponse({ status: 200, type: UserResponseDto })
-  @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
-  async getProfile(@CurrentUser() user: RequestUser): Promise<UserResponseDto> {
-    const record = await this.usersService.findById(user.sub);
-    if (!record) {
-      throw new NotFoundException('User not found');
-    }
-    return this.usersService.toSafeUser(record);
+  @ApiResponse({ status: HttpStatus.OK, type: UserResponseDto })
+  getProfile(@CurrentUser() user: RequestUser): Promise<UserResponseDto> {
+    return this.usersService.getProfile(user.sub);
   }
 
   @Patch('profile')
   @ApiOperation({ summary: "Update the current user's profile" })
-  @ApiResponse({ status: 200, type: UserResponseDto })
-  @ApiResponse({ status: 400, description: 'Validation failed' })
-  @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+  @ApiResponse({ status: HttpStatus.OK, type: UserResponseDto })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Validation failed',
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: 'Missing or invalid access token',
+  })
   async updateProfile(
     @CurrentUser() user: RequestUser,
     @Body() dto: UpdateProfileDto,
@@ -61,10 +61,16 @@ export class UsersController {
   @ApiOperation({
     summary: "Change the current user's password (revokes all other sessions)",
   })
-  @ApiResponse({ status: 204, description: 'Password changed' })
-  @ApiResponse({ status: 400, description: 'Validation failed' })
   @ApiResponse({
-    status: 401,
+    status: HttpStatus.NO_CONTENT,
+    description: 'Password changed',
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Validation failed',
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
     description:
       'Current password is incorrect, or missing/invalid access token',
   })
@@ -85,9 +91,16 @@ export class UsersController {
   @ApiOperation({
     summary: 'Soft-delete the current account (requires password confirmation)',
   })
-  @ApiResponse({ status: 204, description: 'Account deleted' })
   @ApiResponse({
-    status: 401,
+    status: HttpStatus.NO_CONTENT,
+    description: 'Account deleted',
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Validation failed',
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
     description: 'Incorrect password, or missing/invalid access token',
   })
   async deleteAccount(
@@ -100,9 +113,12 @@ export class UsersController {
   @Get(':id')
   @Roles(RoleName.ADMIN)
   @ApiOperation({ summary: "Get any user's profile by id (admin only)" })
-  @ApiResponse({ status: 200, type: UserResponseDto })
-  @ApiResponse({ status: 403, description: 'Caller is not an admin' })
-  @ApiResponse({ status: 404, description: 'User not found' })
+  @ApiResponse({ status: HttpStatus.OK, type: UserResponseDto })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'Caller is not an admin',
+  })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'User not found' })
   async getById(@Param('id') id: string): Promise<UserResponseDto> {
     const user = await this.usersService.findByIdForAdmin(id);
     return this.usersService.toSafeUser(user);

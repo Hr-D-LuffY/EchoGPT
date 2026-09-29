@@ -2,21 +2,21 @@ import { ApiProperty } from '@nestjs/swagger';
 import { RoleName } from '@prisma/client';
 
 export class UserResponseDto {
-  @ApiProperty()
+  @ApiProperty({ example: 'cmg5a1b2c0001xyz9876abcd' })
   id: string;
 
-  @ApiProperty()
+  @ApiProperty({ example: 'jane@example.com' })
   email: string;
 
-  @ApiProperty()
+  @ApiProperty({ example: 'Jane Doe' })
   fullName: string;
 
-  @ApiProperty({ enum: RoleName })
+  @ApiProperty({ enum: RoleName, example: RoleName.USER })
   role: RoleName;
 
-  @ApiProperty()
+  @ApiProperty({ example: false })
   isEmailVerified: boolean;
 
-  @ApiProperty()
+  @ApiProperty({ example: '2026-09-28T16:45:00.000Z' })
   createdAt: Date;
 }
