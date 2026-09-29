@@ -7,6 +7,8 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { SSE_CONTENT_TYPE, SSE_EVENT_ERROR } from '../constants/sse.constants';
+import { formatSseEvent } from '../sse/sse-writer';
 
 interface ErrorBody {
   success: false;
@@ -44,7 +46,26 @@ export class AllExceptionsFilter implements ExceptionFilter {
       timestamp: new Date().toISOString(),
     };
 
+    if (response.headersSent) {
+      this.writeToOpenStream(response, body);
+      return;
+    }
     response.status(statusCode).json(body);
+  }
+
+  /**
+   * A streaming (SSE) response has already committed its 200 status, so
+   * the error is delivered as a final `error` event in the same envelope.
+   */
+  private writeToOpenStream(response: Response, body: ErrorBody): void {
+    if (response.writableEnded) {
+      return;
+    }
+    const contentType = String(response.getHeader('Content-Type') ?? '');
+    if (contentType.startsWith(SSE_CONTENT_TYPE)) {
+      response.write(formatSseEvent({ event: SSE_EVENT_ERROR, data: body }));
+    }
+    response.end();
   }
 
   private resolveException(exception: unknown): {

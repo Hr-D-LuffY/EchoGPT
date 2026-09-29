@@ -3,6 +3,7 @@ import {
   ConflictException,
   InternalServerErrorException,
   NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { AiProvider, HealthStatus, ProviderType } from '@prisma/client';
 import { EncryptionService } from '../../common/services/encryption.service';
@@ -39,6 +40,7 @@ describe('ProvidersService', () => {
   beforeEach(() => {
     aiProvider = {
       findUnique: jest.fn(),
+      findFirst: jest.fn(),
       create: jest.fn(({ data }) => Promise.resolve(buildProvider(data))),
       update: jest.fn(({ data }) => Promise.resolve(buildProvider(data))),
       updateMany: jest.fn(),
@@ -205,6 +207,46 @@ describe('ProvidersService', () => {
       });
       await expect(service.runHealthCheck('prov-1')).rejects.toBeInstanceOf(
         InternalServerErrorException,
+      );
+    });
+  });
+
+  describe('resolveForCompletion', () => {
+    it('returns the named provider only if it is enabled', async () => {
+      aiProvider.findFirst.mockResolvedValue(buildProvider());
+
+      await service.resolveForCompletion('prov-1');
+
+      expect(aiProvider.findFirst).toHaveBeenCalledWith({
+        where: { id: 'prov-1', isEnabled: true },
+      });
+    });
+
+    it('404s for an unknown or disabled provider', async () => {
+      aiProvider.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.resolveForCompletion('prov-x'),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('falls back to the enabled default when no id is given', async () => {
+      aiProvider.findFirst.mockResolvedValue(
+        buildProvider({ isDefault: true }),
+      );
+
+      await service.resolveForCompletion();
+
+      expect(aiProvider.findFirst).toHaveBeenCalledWith({
+        where: { isDefault: true, isEnabled: true },
+      });
+    });
+
+    it('503s when there is no default to fall back to', async () => {
+      aiProvider.findFirst.mockResolvedValue(null);
+
+      await expect(service.resolveForCompletion()).rejects.toBeInstanceOf(
+        ServiceUnavailableException,
       );
     });
   });

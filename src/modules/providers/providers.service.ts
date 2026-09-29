@@ -5,11 +5,13 @@ import {
   InternalServerErrorException,
   Logger,
   NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { AiProvider, HealthStatus, Prisma } from '@prisma/client';
 import { PROVIDER_DEFAULT_BASE_URLS } from '../../common/constants/provider.constants';
 import { EncryptionService } from '../../common/services/encryption.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ProviderCredentials } from './adapters/ai-provider-adapter.interface';
 import { ProviderAdapterRegistry } from './adapters/provider-adapter.registry';
 import { AvailableProviderResponseDto } from './dto/available-provider-response.dto';
 import { CreateProviderDto } from './dto/create-provider.dto';
@@ -165,16 +167,48 @@ export class ProvidersService {
     );
   }
 
-  async runHealthCheck(id: string): Promise<HealthCheckResponseDto> {
-    const provider = await this.findByIdOrThrow(id);
+  /**
+   * The provider a chat/search request runs on: the one named (it must be
+   * enabled — a disabled provider is indistinguishable from a missing one
+   * to regular users), or else the global default.
+   */
+  async resolveForCompletion(providerId?: string): Promise<AiProvider> {
+    if (providerId) {
+      const provider = await this.prisma.aiProvider.findFirst({
+        where: { id: providerId, isEnabled: true },
+      });
+      if (!provider) {
+        throw new NotFoundException('Provider not found or not enabled');
+      }
+      return provider;
+    }
+
+    const fallback = await this.prisma.aiProvider.findFirst({
+      where: { isDefault: true, isEnabled: true },
+    });
+    if (!fallback) {
+      throw new ServiceUnavailableException(
+        'No default AI provider is configured — pass a providerId from /providers/available',
+      );
+    }
+    return fallback;
+  }
+
+  getCredentials(provider: AiProvider): ProviderCredentials {
     if (!provider.apiKeyEncrypted) {
       throw new BadRequestException('Provider has no API key configured');
     }
-
-    const result = await this.adapterRegistry.get(provider.type).healthCheck({
+    return {
       apiKey: this.decryptApiKey(provider),
       baseUrl: provider.baseUrl ?? PROVIDER_DEFAULT_BASE_URLS[provider.type],
-    });
+    };
+  }
+
+  async runHealthCheck(id: string): Promise<HealthCheckResponseDto> {
+    const provider = await this.findByIdOrThrow(id);
+    const result = await this.adapterRegistry
+      .get(provider.type)
+      .healthCheck(this.getCredentials(provider));
 
     const checked = await this.prisma.aiProvider.update({
       where: { id },
